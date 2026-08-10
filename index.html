@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Stok Outlet — Rekap Visit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#10131A;
+    --surface:#181C25;
+    --surface-2:#1F2430;
+    --border:#2A303D;
+    --border-strong:#3A4152;
+    --text:#EDEFF4;
+    --text-2:#9AA2B4;
+    --text-3:#5D6478;
+    --im3:#F2A93B;
+    --im3-dim:#3A2E14;
+    --tri:#B26BF0;
+    --tri-dim:#2E2038;
+    --tsel:#E5484D;
+    --tsel-dim:#3A1E1F;
+    --xl:#3E8DF3;
+    --xl-dim:#1B2A3E;
+    --up:#34D399;
+    --up-dim:#12291F;
+    --down:#F87171;
+    --down-dim:#301A1A;
+    --flat:#8A93A6;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:2.5rem 1.75rem 4rem;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--text-3);
+    margin:0 0 10px;
+  }
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:32px;
+    margin:0 0 8px;
+    letter-spacing:-0.01em;
+  }
+  .sub{color:var(--text-2);font-size:14.5px;margin:0;max-width:640px;line-height:1.55;}
+  .topbar{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    flex-wrap:wrap;gap:1.25rem;margin-bottom:2rem;padding-bottom:1.75rem;
+    border-bottom:0.5px solid var(--border);
+  }
+  .status{
+    display:flex;align-items:center;gap:8px;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text-3);
+  }
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--flat);flex:none;}
+  .dot.live{background:var(--up);box-shadow:0 0 0 3px var(--up-dim);}
+  .dot.err{background:var(--down);box-shadow:0 0 0 3px var(--down-dim);}
+
+  .weekbar{
+    display:flex;align-items:center;gap:14px;margin-bottom:1.75rem;
+  }
+  .weekbtn{
+    background:var(--surface);border:0.5px solid var(--border);color:var(--text-2);
+    width:34px;height:34px;border-radius:9px;font-size:16px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;flex:none;
+    transition:border-color .15s, color .15s;
+  }
+  .weekbtn:hover:not(:disabled){border-color:var(--border-strong);color:var(--text);}
+  .weekbtn:disabled{opacity:0.3;cursor:default;}
+  .weeklabel{
+    flex:1;background:var(--surface);border:0.5px solid var(--border);border-radius:10px;
+    padding:10px 18px;text-align:center;
+  }
+  .weeklabel .wk-range{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15.5px;}
+  .weeklabel .wk-meta{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--text-3);margin-top:2px;}
+
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.75rem;}
+  .card{
+    background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);
+    padding:16px 18px;position:relative;overflow:hidden;
+  }
+  .card .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+  .op-name{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;}
+  .bars{display:flex;align-items:flex-end;gap:2.5px;height:16px;}
+  .bars i{width:3.5px;border-radius:1px;background:var(--border-strong);display:block;}
+  .bars i:nth-child(1){height:35%;} .bars i:nth-child(2){height:55%;}
+  .bars i:nth-child(3){height:75%;} .bars i:nth-child(4){height:100%;}
+  .card .total{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:26px;line-height:1;}
+  .card .delta{
+    display:inline-flex;align-items:center;gap:4px;margin-top:9px;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;padding:3px 8px;border-radius:6px;
+  }
+  .delta.up{color:var(--up);background:var(--up-dim);}
+  .delta.down{color:var(--down);background:var(--down-dim);}
+  .delta.flat{color:var(--flat);background:rgba(138,147,166,0.12);}
+
+  .panel{
+    background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);
+    padding:20px 22px;margin-bottom:1.5rem;
+  }
+  .panel h2{
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;margin:0 0 2px;
+  }
+  .panel .panel-sub{color:var(--text-3);font-size:12.5px;margin:0 0 16px;}
+  .chart-wrap{height:230px;position:relative;}
+
+  .filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.25rem;}
+  .filters select, .filters input{
+    background:var(--surface);border:0.5px solid var(--border);color:var(--text);
+    border-radius:9px;padding:8px 12px;font-family:'Inter',sans-serif;font-size:13px;
+    outline:none;
+  }
+  .filters select:focus, .filters input:focus{border-color:var(--border-strong);}
+  .filters input{flex:1;min-width:160px;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{
+    text-align:left;color:var(--text-3);font-weight:500;font-size:11px;
+    text-transform:uppercase;letter-spacing:0.05em;padding:0 10px 10px;
+    border-bottom:0.5px solid var(--border);
+    font-family:'IBM Plex Mono',monospace;
+  }
+  thead th.num{text-align:right;}
+  tbody td{padding:11px 10px;border-bottom:0.5px solid var(--border);vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--surface-2);}
+  td.num{text-align:right;font-family:'IBM Plex Mono',monospace;}
+  .rank{color:var(--text-3);font-family:'IBM Plex Mono',monospace;font-size:12px;width:26px;}
+  .dse-name{font-weight:500;}
+  .dse-meta{color:var(--text-3);font-size:11.5px;margin-top:1px;}
+  .total-cell{font-weight:600;}
+  .trend-badge{
+    display:inline-flex;align-items:center;gap:3px;font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;padding:2px 7px;border-radius:6px;white-space:nowrap;
+  }
+  .op-dot{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:6px;}
+
+  .comp-row{display:flex;gap:28px;flex-wrap:wrap;}
+  .comp-item{flex:1;min-width:140px;}
+  .comp-label{display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-2);margin-bottom:6px;}
+  .comp-track{height:7px;background:var(--surface-2);border-radius:4px;overflow:hidden;}
+  .comp-fill{height:100%;border-radius:4px;}
+
+  .msg{padding:3rem 1rem;text-align:center;color:var(--text-2);font-size:14px;}
+  .msg a{color:var(--xl);}
+
+  .gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+  .gitem{
+    position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;cursor:pointer;
+    background:var(--surface-2);border:0.5px solid var(--border);
+  }
+  .gitem img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .2s;}
+  .gitem:hover img{transform:scale(1.05);}
+  .gcap{
+    position:absolute;left:0;right:0;bottom:0;padding:6px 8px 5px;
+    background:rgba(16,19,26,0.88);
+  }
+  .gcap .g-toko{font-size:11px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .gcap .g-meta{font-size:10px;color:var(--text-3);font-family:'IBM Plex Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .gitem.broken{display:flex;align-items:center;justify-content:center;}
+  .gitem.broken::after{content:"–";color:var(--text-3);font-size:20px;}
+  .gitem.broken img{display:none;}
+  .loadmore{
+    display:block;margin:16px auto 0;background:var(--surface-2);border:0.5px solid var(--border);
+    color:var(--text-2);padding:9px 20px;border-radius:9px;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;
+  }
+  .loadmore:hover{border-color:var(--border-strong);color:var(--text);}
+  .lightbox{
+    position:fixed;inset:0;background:rgba(8,10,14,0.92);display:none;
+    align-items:center;justify-content:center;z-index:999;padding:2rem;flex-direction:column;
+  }
+  .lightbox.show{display:flex;}
+  .lightbox img{max-width:90vw;max-height:78vh;border-radius:8px;object-fit:contain;}
+  .lightbox .lb-cap{color:var(--text);margin-top:14px;text-align:center;font-size:14px;}
+  .lightbox .lb-cap .lb-meta{color:var(--text-3);font-size:12px;font-family:'IBM Plex Mono',monospace;margin-top:3px;}
+  .lightbox .lb-close{
+    position:absolute;top:20px;right:24px;background:var(--surface);border:0.5px solid var(--border);
+    color:var(--text);width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;
+  }
+
+  @media (max-width:760px){
+    .cards{grid-template-columns:repeat(2,1fr);}
+    table{font-size:12px;}
+    .dse-meta{display:none;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Rekap Visit &middot; Stok Kartu Perdana</p>
+      <h1>Dashboard stok outlet mingguan</h1>
+      <p class="sub">Total stok per operator ditotal dari seluruh kunjungan outlet dalam satu minggu, per DSE. Data ditarik langsung dari Google Sheet setiap dashboard dibuka.</p>
+    </div>
+    <div class="status" id="status"><span class="dot" id="statusDot"></span><span id="statusText">Memuat data…</span></div>
+  </div>
+
+  <div id="app"><div class="msg">Menghubungi Google Sheet…</div></div>
+
+</div>
+
+<div class="lightbox" id="lightbox">
+  <button class="lb-close" id="lbClose">×</button>
+  <img id="lbImg" src="" alt="">
+  <div class="lb-cap"><div id="lbToko"></div><div class="lb-meta" id="lbMeta"></div></div>
+</div>
+
+<script>
+const SHEET_ID = "1Zi7Ze8Zdy6eJh4xc3KZgb-ff8vhHbbfVIn1j1TIFkgQ";
+const GID = "1201697084";
+const CSV_URL = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:csv&gid=" + GID;
+const FIRESTORE_PROJECT_ID = "displaysp-a9acb";
+const FIRESTORE_URL = "https://firestore.googleapis.com/v1/projects/" + FIRESTORE_PROJECT_ID + "/databases/(default)/documents/dashboard/latest";
+
+const OPS = [
+  {key:"stok_im3", label:"IM3", color:"var(--im3)", dim:"var(--im3-dim)"},
+  {key:"stok_3id", label:"3ID", color:"var(--tri)", dim:"var(--tri-dim)"},
+  {key:"stok_tsel", label:"Tsel", color:"var(--tsel)", dim:"var(--tsel-dim)"},
+  {key:"stok_xl", label:"XL", color:"var(--xl)", dim:"var(--xl-dim)"}
+];
+
+let ROWS = [];
+let WEEKS = [];
+let weekIdx = 0;
+let filterBranch = "";
+let filterMc = "";
+let searchTerm = "";
+let trendChart = null;
+let galleryLimit = 24;
+
+function driveThumb(link){
+  if(!link) return null;
+  const m = String(link).match(/\/d\/([a-zA-Z0-9_-]+)/) || String(link).match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if(!m) return null;
+  return "https://drive.google.com/thumbnail?id=" + m[1] + "&sz=w400";
+}
+
+function num(v){ const n = parseFloat(String(v||"0").replace(/[^0-9.\-]/g,"")); return isNaN(n) ? 0 : n; }
+
+function parseDate(s){
+  if(!s) return null;
+  s = String(s).trim();
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return new Date(+m[1], +m[2]-1, +m[3]);
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m) return new Date(+m[3], +m[2]-1, +m[1]);
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+function mondayOf(d){
+  const x = new Date(d);
+  const day = x.getDay();
+  const diff = x.getDate() - day + (day===0 ? -6 : 1);
+  x.setDate(diff);
+  x.setHours(0,0,0,0);
+  return x;
+}
+
+function fmtRange(monday){
+  const sunday = new Date(monday); sunday.setDate(sunday.getDate()+6);
+  const opts = {day:"numeric", month:"short"};
+  const y = monday.getFullYear();
+  return monday.toLocaleDateString("id-ID", opts) + " – " + sunday.toLocaleDateString("id-ID", opts) + " " + y;
+}
+
+function classifyKet(ket){
+  const k = String(ket||"").toLowerCase();
+  if(k.includes("tutup")) return "Tutup";
+  if(k.includes("outlet")) return "Outlet";
+  if(k.includes("warung")) return "Warung";
+  if(k.includes("klontong") || k.includes("kelontong")) return "Klontong";
+  return "Lainnya";
+}
+
+async function tryFirestore(){
+  try{
+    const res = await fetch(FIRESTORE_URL);
+    if(!res.ok) return null;
+    const doc = await res.json();
+    const jsonStr = doc.fields && doc.fields.json && doc.fields.json.stringValue;
+    if(!jsonStr) return null;
+    const rows = JSON.parse(jsonStr);
+    if(!Array.isArray(rows) || rows.length === 0) return null;
+    const updatedAt = doc.fields.updated_at ? doc.fields.updated_at.timestampValue : null;
+    return {rows, updatedAt};
+  }catch(e){
+    return null;
+  }
+}
+
+async function tryCsv(){
+  const res = await fetch(CSV_URL);
+  if(!res.ok) throw new Error("HTTP " + res.status);
+  const csvText = await res.text();
+  if(csvText.trim().startsWith("<")) throw new Error("Sheet belum publik / butuh akses");
+  const parsed = Papa.parse(csvText, {header:true, skipEmptyLines:true});
+  return {rows: parsed.data, updatedAt: null};
+}
+
+async function loadData(){
+  try{
+    let source = "cache";
+    let result = await tryFirestore();
+    if(!result){
+      source = "sheet";
+      result = await tryCsv();
+    }
+    const rawRows = result.rows;
+
+    ROWS = rawRows.map(r => ({
+      tanggal: r.tanggal,
+      date: parseDate(r.tanggal),
+      waktu: r.waktu,
+      nama: (r.nama||"").trim(),
+      branch: (r.branch||"").trim(),
+      mc: (r.mc||"").trim(),
+      fungsi: (r.fungsi||"").trim(),
+      nama_toko: (r.nama_toko||"").trim(),
+      im3: num(r.stok_im3),
+      i3id: num(r.stok_3id),
+      tsel: num(r.stok_tsel),
+      xl: num(r.stok_xl),
+      ket: r.ket,
+      ketClass: classifyKet(r.ket),
+      link_foto: r.link_foto
+    })).filter(r => r.date && r.nama);
+
+    if(ROWS.length === 0) throw new Error("Tidak ada baris data terbaca");
+
+    const weekMap = new Map();
+    ROWS.forEach(r => {
+      const mon = mondayOf(r.date);
+      const key = mon.toISOString().slice(0,10);
+      if(!weekMap.has(key)) weekMap.set(key, mon);
+      r.weekKey = key;
+    });
+    WEEKS = Array.from(weekMap.entries()).sort((a,b)=> a[0].localeCompare(b[0])).map(e=>({key:e[0], monday:e[1]}));
+    weekIdx = WEEKS.length - 1;
+
+    if(source === "cache"){
+      const ageTxt = result.updatedAt ? new Date(result.updatedAt).toLocaleString("id-ID") : "";
+      setStatus(true, "Cache Firestore · sync terakhir " + ageTxt);
+    }else{
+      setStatus(true, "Live langsung dari Sheet · " + ROWS.length + " kunjungan");
+    }
+    render();
+  }catch(err){
+    setStatus(false, "Gagal memuat data");
+    document.getElementById("app").innerHTML =
+      '<div class="msg">Tidak bisa mengambil data.<br>' +
+      'Pastikan tab "Rekap Visit" dibagikan dengan akses "Anyone with the link – Viewer", atau cek setup Firestore.<br>' +
+      '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11.5px;color:var(--text-3)">' + err.message + '</span></div>';
+  }
+}
+
+function setStatus(ok, text){
+  document.getElementById("statusDot").className = "dot " + (ok ? "live" : "err");
+  document.getElementById("statusText").textContent = text;
+}
+
+function weekRows(idx, applyFilters){
+  if(!WEEKS[idx]) return [];
+  const key = WEEKS[idx].key;
+  return ROWS.filter(r => {
+    if(r.weekKey !== key) return false;
+    if(applyFilters && filterBranch && r.branch !== filterBranch) return false;
+    if(applyFilters && filterMc && r.mc !== filterMc) return false;
+    if(applyFilters && searchTerm && !r.nama.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    return true;
+  });
+}
+
+function sumOps(rows){
+  return {
+    im3: rows.reduce((s,r)=>s+r.im3,0),
+    i3id: rows.reduce((s,r)=>s+r.i3id,0),
+    tsel: rows.reduce((s,r)=>s+r.tsel,0),
+    xl: rows.reduce((s,r)=>s+r.xl,0)
+  };
+}
+
+function deltaBadge(cur, prev){
+  if(prev === 0 && cur === 0) return {cls:"flat", txt:"–", arrow:""};
+  if(prev === 0) return {cls:"up", txt:"baru", arrow:"▲"};
+  const pct = ((cur - prev) / prev) * 100;
+  if(Math.abs(pct) < 1) return {cls:"flat", txt:"0%", arrow:"–"};
+  const cls = pct > 0 ? "up" : "down";
+  const arrow = pct > 0 ? "▲" : "▼";
+  return {cls, txt: Math.abs(Math.round(pct)) + "%", arrow};
+}
+
+function render(){
+  galleryLimit = 24;
+  const branches = Array.from(new Set(ROWS.map(r=>r.branch))).filter(Boolean).sort();
+  const mcs = Array.from(new Set(ROWS.filter(r => !filterBranch || r.branch===filterBranch).map(r=>r.mc))).filter(Boolean).sort();
+
+  const curRows = weekRows(weekIdx, true);
+  const prevRows = weekIdx > 0 ? weekRows(weekIdx-1, true) : [];
+  const curTotals = sumOps(curRows);
+  const prevTotals = sumOps(prevRows);
+
+  const cardsHtml = OPS.map(op => {
+    const k = op.key === "stok_im3" ? "im3" : op.key === "stok_3id" ? "i3id" : op.key === "stok_tsel" ? "tsel" : "xl";
+    const cur = curTotals[k], prev = prevTotals[k];
+    const d = deltaBadge(cur, prev);
+    return '<div class="card">' +
+      '<div class="top"><span class="op-name" style="color:' + op.color + '">' + op.label + '</span>' +
+      '<div class="bars"><i></i><i></i><i></i><i style="background:' + op.color + '"></i></div></div>' +
+      '<div class="total">' + cur.toLocaleString("id-ID") + '</div>' +
+      '<div class="delta ' + d.cls + '">' + d.arrow + ' ' + d.txt + ' vs mgg lalu</div>' +
+      '</div>';
+  }).join("");
+
+  const dseMap = new Map();
+  curRows.forEach(r => {
+    if(!dseMap.has(r.nama)) dseMap.set(r.nama, {nama:r.nama, branch:r.branch, mc:r.mc, fungsi:r.fungsi, outlets:new Set(), im3:0, i3id:0, tsel:0, xl:0});
+    const d = dseMap.get(r.nama);
+    d.outlets.add(r.nama_toko);
+    d.im3 += r.im3; d.i3id += r.i3id; d.tsel += r.tsel; d.xl += r.xl;
+  });
+  const prevDseMap = new Map();
+  prevRows.forEach(r => {
+    if(!prevDseMap.has(r.nama)) prevDseMap.set(r.nama, {im3:0,i3id:0,tsel:0,xl:0});
+    const d = prevDseMap.get(r.nama);
+    d.im3 += r.im3; d.i3id += r.i3id; d.tsel += r.tsel; d.xl += r.xl;
+  });
+
+  let dseList = Array.from(dseMap.values()).map(d => {
+    d.total = d.im3 + d.i3id + d.tsel + d.xl;
+    const prev = prevDseMap.get(d.nama);
+    const prevTotal = prev ? (prev.im3+prev.i3id+prev.tsel+prev.xl) : 0;
+    d.trend = deltaBadge(d.total, prevTotal);
+    return d;
+  }).sort((a,b) => b.total - a.total);
+
+  const rowsHtml = dseList.map((d,i) => {
+    return '<tr>' +
+      '<td class="rank">' + (i+1) + '</td>' +
+      '<td><div class="dse-name">' + esc(d.nama) + '</div><div class="dse-meta">' + esc(d.mc || d.branch) + ' &middot; ' + esc(d.fungsi) + '</div></td>' +
+      '<td class="num">' + d.outlets.size + '</td>' +
+      '<td class="num" style="color:var(--im3)">' + d.im3.toLocaleString("id-ID") + '</td>' +
+      '<td class="num" style="color:var(--tri)">' + d.i3id.toLocaleString("id-ID") + '</td>' +
+      '<td class="num" style="color:var(--tsel)">' + d.tsel.toLocaleString("id-ID") + '</td>' +
+      '<td class="num" style="color:var(--xl)">' + d.xl.toLocaleString("id-ID") + '</td>' +
+      '<td class="num total-cell">' + d.total.toLocaleString("id-ID") + '</td>' +
+      '<td><span class="trend-badge delta ' + d.trend.cls + '">' + d.trend.arrow + ' ' + d.trend.txt + '</span></td>' +
+      '</tr>';
+  }).join("") || '<tr><td colspan="9" style="text-align:center;color:var(--text-3);padding:24px;">Tidak ada data untuk minggu / filter ini.</td></tr>';
+
+  const ketCounts = {};
+  curRows.forEach(r => { ketCounts[r.ketClass] = (ketCounts[r.ketClass]||0) + 1; });
+  const ketTotal = curRows.length || 1;
+  const ketColors = {Outlet:"var(--xl)", Warung:"var(--im3)", Klontong:"var(--tri)", Tutup:"var(--down)", Lainnya:"var(--flat)"};
+  const compHtml = Object.keys(ketColors).filter(k => ketCounts[k]).map(k => {
+    const pct = Math.round((ketCounts[k]/ketTotal)*100);
+    return '<div class="comp-item"><div class="comp-label"><span>' + k + '</span><span>' + ketCounts[k] + ' (' + pct + '%)</span></div>' +
+      '<div class="comp-track"><div class="comp-fill" style="width:' + pct + '%;background:' + ketColors[k] + '"></div></div></div>';
+  }).join("");
+
+  document.getElementById("app").innerHTML =
+    '<div class="weekbar">' +
+      '<button class="weekbtn" id="prevWk" ' + (weekIdx<=0?'disabled':'') + '>‹</button>' +
+      '<div class="weeklabel"><div class="wk-range">' + fmtRange(WEEKS[weekIdx].monday) + '</div>' +
+      '<div class="wk-meta">Minggu ' + (weekIdx+1) + ' dari ' + WEEKS.length + ' &middot; ' + curRows.length + ' kunjungan tercatat</div></div>' +
+      '<button class="weekbtn" id="nextWk" ' + (weekIdx>=WEEKS.length-1?'disabled':'') + '>›</button>' +
+    '</div>' +
+    '<div class="cards">' + cardsHtml + '</div>' +
+    '<div class="panel"><h2>Tren stok mingguan</h2><p class="panel-sub">Total stok tercatat per operator, per minggu (sesuai filter aktif)</p>' +
+      '<div class="chart-wrap"><canvas id="trendCanvas"></canvas></div></div>' +
+    '<div class="panel">' +
+      '<h2>Ranking DSE minggu ini</h2><p class="panel-sub">Diurutkan dari total stok terbanyak</p>' +
+      '<div class="filters">' +
+        '<select id="fBranch"><option value="">Semua branch</option>' + branches.map(b=>'<option '+(b===filterBranch?'selected':'')+'>'+esc(b)+'</option>').join('') + '</select>' +
+        '<select id="fMc"><option value="">Semua MC</option>' + mcs.map(m=>'<option '+(m===filterMc?'selected':'')+'>'+esc(m)+'</option>').join('') + '</select>' +
+        '<input id="fSearch" type="text" placeholder="Cari nama DSE…" value="' + esc(searchTerm) + '">' +
+      '</div>' +
+      '<div style="overflow-x:auto;"><table><thead><tr>' +
+        '<th></th><th>DSE</th><th class="num">Outlet</th>' +
+        '<th class="num" style="color:var(--im3)">IM3</th><th class="num" style="color:var(--tri)">3ID</th>' +
+        '<th class="num" style="color:var(--tsel)">Tsel</th><th class="num" style="color:var(--xl)">XL</th>' +
+        '<th class="num">Total</th><th>Tren</th>' +
+      '</tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' +
+    '</div>' +
+    '<div class="panel"><h2>Komposisi jenis lokasi</h2><p class="panel-sub">Berdasarkan kolom "ket" pada kunjungan minggu ini</p>' +
+      '<div class="comp-row">' + compHtml + '</div></div>' +
+    '<div class="panel"><h2>Galeri foto outlet</h2><p class="panel-sub">Foto dari kolom link_foto, sesuai filter minggu/branch/MC aktif &middot; klik foto untuk perbesar</p>' +
+      '<div class="gallery-grid" id="galleryGrid"></div>' +
+      '<button class="loadmore" id="loadMoreBtn" style="display:none;">Muat lebih banyak</button>' +
+    '</div>';
+
+  document.getElementById("prevWk").onclick = () => { if(weekIdx>0){ weekIdx--; render(); } };
+  document.getElementById("nextWk").onclick = () => { if(weekIdx<WEEKS.length-1){ weekIdx++; render(); } };
+  document.getElementById("fBranch").onchange = (e) => { filterBranch = e.target.value; filterMc=""; render(); };
+  document.getElementById("fMc").onchange = (e) => { filterMc = e.target.value; render(); };
+  document.getElementById("fSearch").oninput = (e) => { searchTerm = e.target.value; render(); };
+
+  drawTrend();
+  renderGallery(curRows);
+}
+
+function renderGallery(rows){
+  const withPhoto = rows.filter(r => driveThumb(r.link_foto)).sort((a,b) => {
+    return (b.tanggal+b.waktu).localeCompare(a.tanggal+a.waktu);
+  });
+  const grid = document.getElementById("galleryGrid");
+  const btn = document.getElementById("loadMoreBtn");
+  if(withPhoto.length === 0){
+    grid.innerHTML = '<p style="color:var(--text-3);font-size:13px;grid-column:1/-1;">Tidak ada foto untuk minggu / filter ini.</p>';
+    btn.style.display = "none";
+    return;
+  }
+  const slice = withPhoto.slice(0, galleryLimit);
+  grid.innerHTML = slice.map((r,i) => {
+    const src = driveThumb(r.link_foto);
+    return '<div class="gitem" data-idx="' + i + '">' +
+      '<img src="' + src + '" loading="lazy" alt="' + esc(r.nama_toko) + '" onerror="this.parentElement.classList.add(\'broken\')">' +
+      '<div class="gcap"><div class="g-toko">' + esc(r.nama_toko || "–") + '</div>' +
+      '<div class="g-meta">' + esc(r.nama) + ' &middot; ' + esc(r.tanggal) + '</div></div></div>';
+  }).join("");
+
+  Array.from(grid.querySelectorAll(".gitem")).forEach(el => {
+    el.onclick = () => {
+      const r = slice[+el.dataset.idx];
+      const src = driveThumb(r.link_foto).replace("w400","w1200");
+      document.getElementById("lbImg").src = src;
+      document.getElementById("lbToko").textContent = r.nama_toko || "–";
+      document.getElementById("lbMeta").textContent = r.nama + " · " + r.tanggal + " " + r.waktu + " · " + (r.branch||"") + (r.mc ? " / " + r.mc : "");
+      document.getElementById("lightbox").classList.add("show");
+    };
+  });
+
+  btn.style.display = withPhoto.length > galleryLimit ? "block" : "none";
+  btn.onclick = () => { galleryLimit += 24; renderGallery(rows); };
+}
+
+document.getElementById("lbClose").onclick = () => document.getElementById("lightbox").classList.remove("show");
+document.getElementById("lightbox").onclick = (e) => { if(e.target.id === "lightbox") e.currentTarget.classList.remove("show"); };
+
+function esc(s){
+  return String(s||"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function drawTrend(){
+  const labels = WEEKS.map(w => {
+    const d = w.monday;
+    return d.toLocaleDateString("id-ID",{day:"numeric",month:"short"});
+  });
+  const filteredByWeek = WEEKS.map((w, i) => sumOps(weekRows(i, true)));
+  const datasets = OPS.map(op => {
+    const k = op.key === "stok_im3" ? "im3" : op.key === "stok_3id" ? "i3id" : op.key === "stok_tsel" ? "tsel" : "xl";
+    const colorVal = getComputedStyle(document.documentElement).getPropertyValue("--" + (k==="i3id"?"tri":k)).trim();
+    return {
+      label: op.label,
+      data: filteredByWeek.map(f => f[k]),
+      borderColor: colorVal,
+      backgroundColor: colorVal,
+      tension: 0.3,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      borderWidth: 2
+    };
+  });
+
+  if(trendChart) trendChart.destroy();
+  const ctx = document.getElementById("trendCanvas").getContext("2d");
+  trendChart = new Chart(ctx, {
+    type: "line",
+    data: {labels, datasets},
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:"index", intersect:false},
+      plugins:{
+        legend:{labels:{color:"#9AA2B4", font:{family:"Inter", size:11.5}, boxWidth:10, usePointStyle:true}},
+        tooltip:{backgroundColor:"#1F2430", borderColor:"#2A303D", borderWidth:1, titleColor:"#EDEFF4", bodyColor:"#EDEFF4"}
+      },
+      scales:{
+        x:{ticks:{color:"#5D6478", font:{family:"IBM Plex Mono", size:10.5}}, grid:{color:"#2A303D"}},
+        y:{ticks:{color:"#5D6478", font:{family:"IBM Plex Mono", size:10.5}}, grid:{color:"#2A303D"}, beginAtZero:true}
+      }
+    }
+  });
+}
+
+loadData();
+</script>
+</body>
+</html>
