@@ -409,6 +409,10 @@ function deltaBadge(cur, prev){
 }
 
 function render(){
+  const activeId = document.activeElement ? document.activeElement.id : null;
+  const activeSelStart = (activeId === "fSearch" && document.activeElement.selectionStart != null) ? document.activeElement.selectionStart : null;
+  const scrollY = window.scrollY;
+
   galleryLimit = 24;
   const branches = Array.from(new Set(ROWS.map(r=>r.branch))).filter(Boolean).sort();
   const mcs = Array.from(new Set(ROWS.filter(r => !filterBranch || r.branch===filterBranch).map(r=>r.mc))).filter(Boolean).sort();
@@ -512,6 +516,17 @@ function render(){
   document.getElementById("fBranch").onchange = (e) => { filterBranch = e.target.value; filterMc=""; render(); };
   document.getElementById("fMc").onchange = (e) => { filterMc = e.target.value; render(); };
   document.getElementById("fSearch").oninput = (e) => { searchTerm = e.target.value; render(); };
+
+  if(activeId){
+    const el = document.getElementById(activeId);
+    if(el){
+      el.focus({preventScroll:true});
+      if(activeSelStart != null && el.setSelectionRange){
+        el.setSelectionRange(activeSelStart, activeSelStart);
+      }
+    }
+  }
+  window.scrollTo(0, scrollY);
 
   drawTrend();
   renderGallery(curRows);
