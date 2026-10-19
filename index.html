@@ -293,16 +293,28 @@ function classifyKet(ket){
 
 async function tryFirestore(){
   try{
-    const res = await fetch(FIRESTORE_URL);
+    const base = "https://firestore.googleapis.com/v1/projects/" + FIRESTORE_PROJECT_ID + "/databases/(default)/documents/dashboard/";
+    const res = await fetch(base + "latest");
     if(!res.ok) return null;
-    const doc = await res.json();
-    const jsonStr = doc.fields && doc.fields.json && doc.fields.json.stringValue;
-    if(!jsonStr) return null;
-    const rows = JSON.parse(jsonStr);
-    if(!Array.isArray(rows) || rows.length === 0) return null;
-    const updatedAt = doc.fields.updated_at ? doc.fields.updated_at.timestampValue : null;
+    const meta = await res.json();
+    const f = meta.fields || {};
+    const count = f.chunk_count ? parseInt(f.chunk_count.integerValue, 10) : 0;
+    if(!count) return null;
+
+    const parts = await Promise.all(
+      Array.from({length: count}, (_, i) =>
+        fetch(base + "chunk_" + i).then(r => {
+          if(!r.ok) throw new Error("chunk_" + i + " gagal (" + r.status + ")");
+          return r.json();
+        })
+      )
+    );
+    const rows = parts.flatMap(d => JSON.parse(d.fields.json.stringValue));
+    if(!rows.length) return null;
+    const updatedAt = f.updated_at ? f.updated_at.timestampValue : null;
     return {rows, updatedAt};
   }catch(e){
+    console.error("Firestore:", e);
     return null;
   }
 }
